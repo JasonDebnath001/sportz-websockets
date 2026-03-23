@@ -1,17 +1,48 @@
-import express from "express";
+import { eq } from "drizzle-orm";
+import { db, pool } from "./db/db.js";
+import { demoUsers } from "./db/schema.js";
 
-const app = express();
+async function main() {
+  try {
+    console.log("Performing CRUD operations...");
 
-// Use JSON middleware
-app.use(express.json());
+    const [newUser] = await db
+      .insert(demoUsers)
+      .values({ name: "Admin User", email: "admin@example.com" })
+      .returning();
 
-// Root GET route
-app.get("/", (req, res) => {
-  res.send("Welcome to the Sportz server!");
-});
+    if (!newUser) throw new Error("Failed to create user");
 
-// Start the server
-const PORT = 8000;
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-});
+    console.log("✅ CREATE:", newUser);
+
+    const foundUser = await db
+      .select()
+      .from(demoUsers)
+      .where(eq(demoUsers.id, newUser.id));
+
+    console.log("✅ READ:", foundUser[0]);
+
+    const [updatedUser] = await db
+      .update(demoUsers)
+      .set({ name: "Super Admin" })
+      .where(eq(demoUsers.id, newUser.id))
+      .returning();
+
+    if (!updatedUser) throw new Error("Failed to update user");
+
+    console.log("✅ UPDATE:", updatedUser);
+
+    await db.delete(demoUsers).where(eq(demoUsers.id, newUser.id));
+    console.log("✅ DELETE: User deleted");
+  } catch (error) {
+    console.error("❌ Error:", error);
+    process.exit(1);
+  } finally {
+    if (pool) {
+      await pool.end();
+      console.log("Database pool closed.");
+    }
+  }
+}
+
+main();
