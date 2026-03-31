@@ -5,33 +5,31 @@ const arcjetMode = process.env.ARCJET_MODE === "DRY_RUN" ? "DRY_RUN" : "LIVE";
 
 if (!arcjetKey) throw new Error("ARCJET KEY environment variable is missing");
 
-export const httpArcjet = arcjetKey
-  ? arcjet({
-      key: arcjetKey,
-      rules: [
-        shield({ mode: arcjetMode }),
-        detectBot({
-          mode: arcjetMode,
-          allow: ["CATEGORY:SEARCH_ENGINE", "CATEGORY:PREVIEW"],
-        }),
-        slidingWindow({ mode: arcjetMode, interval: "10s", max: 50 }),
-      ],
-    })
-  : null;
+export const httpArcjet = arcjet({
+  key: arcjetKey,
+  proxies: ["10.0.0.0/8"],
+  rules: [
+    shield({ mode: arcjetMode }),
+    detectBot({
+      mode: arcjetMode,
+      allow: ["CATEGORY:SEARCH_ENGINE", "CATEGORY:PREVIEW"],
+    }),
+    slidingWindow({ mode: arcjetMode, interval: "10s", max: 50 }),
+  ],
+});
 
-export const wsArcjet = arcjetKey
-  ? arcjet({
-      key: arcjetKey,
-      rules: [
-        shield({ mode: arcjetMode }),
-        detectBot({
-          mode: arcjetMode,
-          allow: ["CATEGORY:SEARCH_ENGINE", "CATEGORY:PREVIEW"],
-        }),
-        slidingWindow({ mode: arcjetMode, interval: "2s", max: 5 }),
-      ],
-    })
-  : null;
+export const wsArcjet = arcjet({
+  key: arcjetKey,
+  proxies: ["10.0.0.0/8"],
+  rules: [
+    shield({ mode: arcjetMode }),
+    detectBot({
+      mode: arcjetMode,
+      allow: ["CATEGORY:SEARCH_ENGINE", "CATEGORY:PREVIEW"],
+    }),
+    slidingWindow({ mode: arcjetMode, interval: "2s", max: 5 }),
+  ],
+});
 
 export function securityMiddleware() {
   return async (req, res, next) => {
@@ -48,7 +46,12 @@ export function securityMiddleware() {
         return res.status(403).json({ error: "Forbidden" });
       }
     } catch (error) {
-      console.error("Arcjet middleware error", error);
+      console.error("Arcjet middleware error", {
+        method: req.method,
+        url: req.originalUrl,
+        ip: req.ip,
+        error,
+      });
       return res.status(503).json({ error: "Service unavailable" });
     }
 
