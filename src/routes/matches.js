@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { createMatchSchema } from "../validation/matches.js";
+import {
+  createMatchSchema,
+  listMatchesQuerySchema,
+} from "../validation/matches.js";
 import { db } from "../db/db.js";
 import { matches } from "../db/schema.js";
 import { getMatchStatus } from "../utils/match.status.js";
@@ -7,25 +10,39 @@ import { desc } from "drizzle-orm";
 
 export const matchRouter = Router();
 
-matchRouter.get("/matches", async (req, res) => {
+matchRouter.get("/", async (req, res) => {
+  const parsed = listMatchesQuerySchema.safeParse(req.query);
+
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: "Invalid query",
+      issues: parsed.error.issues,
+    });
+  }
+
+  const limit = parsed.data.limit ?? 50;
+
   try {
-    const allMatches = await db
+    const data = await db
       .select()
       .from(matches)
-      .orderBy(desc(matches.createdAt));
-    res.json(allMatches);
+      .orderBy(desc(matches.createdAt))
+      .limit(limit);
+    res.json({ data });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      error: "Failed to fetch matches",
+    });
   }
 });
 
-matchRouter.post("/matches", async (req, res) => {
+matchRouter.post("/", async (req, res) => {
   const parsed = createMatchSchema.safeParse(req.body);
 
   if (!parsed.success) {
     return res.status(400).json({
       error: "invalid payload",
-      details: JSON.stringify(parsed.error),
+      issues: parsed.error.issues,
     });
   }
 
@@ -36,17 +53,17 @@ matchRouter.post("/matches", async (req, res) => {
         ...parsed.data,
         startTime: new Date(parsed.data.startTime),
         endTime: new Date(parsed.data.endTime),
-        homeScore: parsed.data.homeScore || 0,
-        awayScore: parsed.data.awayScore || 0,
+        homeScore: parsed.data.homeScore ?? 0,
+        awayScore: parsed.data.awayScore ?? 0,
         status: getMatchStatus(parsed.data.startTime, parsed.data.endTime),
       })
       .returning();
 
     return res.status(201).json({ data: event });
   } catch (error) {
+    console.error("Failed to create match:", error);
     return res.status(500).json({
       error: "Failed to create match",
-      details: JSON.stringify(error),
     });
   }
 });
