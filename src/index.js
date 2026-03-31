@@ -14,7 +14,7 @@ app.get("/", (req, res) => {
   res.send("Welcome to the Sportz API!");
 });
 
-app.use("/", matchRouter);
+app.use("/matches", matchRouter);
 
 // Start the server
 const PORT = 8000;
