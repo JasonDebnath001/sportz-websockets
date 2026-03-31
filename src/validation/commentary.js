@@ -18,7 +18,10 @@ export const createCommentarySchema = z.object({
   eventType: z.string().optional(),
   actor: z.string().optional(),
   team: z.string().optional(),
-  message: z.string().min(1, "Message is required"),
+  message: z.preprocess(
+    (val) => (typeof val === "string" ? val.trim() : val),
+    z.string().min(1, "Message is required"),
+  ),
   metadata: z.record(z.string(), z.any()).optional(),
   tags: z.array(z.string()).optional(),
 });
