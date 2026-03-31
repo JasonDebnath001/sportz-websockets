@@ -5,6 +5,7 @@ import { eq, desc } from "drizzle-orm";
 import { matchRouter } from "./routes/matches.js";
 import http from "http";
 import { attachWebsocketServer } from "./ws/server.js";
+import { securityMiddleware } from "./arcjet.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -16,6 +17,8 @@ app.use(express.json());
 app.get("/", (req, res) => {
   res.send("Welcome to the Sportz API!");
 });
+
+app.use(securityMiddleware())
 
 app.use("/matches", matchRouter);
 
