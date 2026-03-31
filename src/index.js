@@ -3,8 +3,11 @@ import { db, pool } from "./db/db.js";
 import { matches, commentary } from "./db/schema.js";
 import { eq, desc } from "drizzle-orm";
 import { matchRouter } from "./routes/matches.js";
+import http from "http"
+import { attachWebsocketServer } from "./ws/server.js";
 
 const app = express();
+const server = http.createServer(app)
 
 // Use JSON middleware
 app.use(express.json());
@@ -16,10 +19,14 @@ app.get("/", (req, res) => {
 
 app.use("/matches", matchRouter);
 
-// Start the server
-const PORT = 8000;
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+const {broadcastMatchCreated} = attachWebsocketServer(server)
+app.locals.broadcastMatchCreated = broadcastMatchCreated
+
+
+server.listen(process.env.PORT, process.env.HOST, () => {
+  const baseUrl = process.env.HOST === '0.0.0.0' ? 'http://localhost:8000' : `http://${process.env.HOST}:${process.env.PORT}`;
+  console.log(`Server running at http://localhost:${process.env.PORT}`);
+  console.log(`Websocket server is running on ${baseUrl.replace('http', 'ws')}/ws`)
 });
 
 // Graceful shutdown
