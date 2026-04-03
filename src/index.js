@@ -19,13 +19,15 @@ app.get("/", (req, res) => {
   res.send("Welcome to the Sportz API!");
 });
 
-app.use(securityMiddleware())
+app.use(securityMiddleware());
 
 app.use("/matches", matchRouter);
-app.use("/matches/:id/commentary", commentaryRouter)
+app.use("/matches/:id/commentary", commentaryRouter);
 
-const { broadcastMatchCreated, wss } = attachWebsocketServer(server);
+const { broadcastMatchCreated, broadcastCommentary, wss } =
+  attachWebsocketServer(server);
 app.locals.broadcastMatchCreated = broadcastMatchCreated;
+app.locals.broadcastCommentary = broadcastCommentary;
 
 server.listen(process.env.PORT, process.env.HOST, () => {
   const baseUrl =
