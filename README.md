@@ -26,7 +26,7 @@ A real-time sports API built with Node.js that provides REST endpoints and WebSo
 
 ## Project Structure
 
-```
+```text
 sportz/
 ├── src/
 │   ├── index.js                 # Main server entry point
@@ -131,7 +131,7 @@ This will create the following tables:
 
 #### List Matches
 
-```
+```http
 GET /matches?limit=50
 ```
 
