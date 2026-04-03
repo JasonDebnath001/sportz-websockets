@@ -1,14 +1,37 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { wsArcjet } from "../arcjet.js";
 
+const MAX_MATCH_ID = 1000000;
+const MAX_MATCHES = 10000;
+const MAX_SUBSCRIPTIONS_PER_SOCKET = 100;
+
 const matchSubscribers = new Map();
 
 function subscribe(matchId, socket) {
+  if (!Number.isSafeInteger(matchId) || matchId < 1 || matchId > MAX_MATCH_ID) {
+    return false;
+  }
+
+  if (!(socket && socket.subscriptions instanceof Set)) {
+    return false;
+  }
+
+  if (
+    socket.subscriptions.size >= MAX_SUBSCRIPTIONS_PER_SOCKET &&
+    !socket.subscriptions.has(matchId)
+  ) {
+    return false;
+  }
+
   if (!matchSubscribers.has(matchId)) {
+    if (matchSubscribers.size >= MAX_MATCHES) {
+      return false;
+    }
     matchSubscribers.set(matchId, new Set());
   }
 
   matchSubscribers.get(matchId).add(socket);
+  return true;
 }
 
 function unsubscribe(matchId, socket) {
@@ -51,7 +74,16 @@ function handleMessage(socket, data) {
   }
 
   if (message?.type === "subscribe" && Number.isInteger(message.matchId)) {
-    subscribe(message.matchId, socket);
+    const ok = subscribe(message.matchId, socket);
+    if (!ok) {
+      sendJson(socket, {
+        type: "error",
+        message:
+          "Subscription rejected: invalid matchId or subscription limits reached",
+      });
+      return;
+    }
+
     socket.subscriptions.add(message.matchId);
     sendJson(socket, { type: "subscribed", matchId: message.matchId });
     return;
@@ -113,8 +145,9 @@ export function attachWebsocketServer(server) {
 
     socket.on("message", (data) => handleMessage(socket, data));
 
-    socket.on("error", () => {
-      console.terminate();
+    socket.on("error", (err) => {
+      console.error("WebSocket error", err);
+      socket.terminate();
     });
 
     socket.on("close", () => {
@@ -124,8 +157,6 @@ export function attachWebsocketServer(server) {
     socket.on("pong", () => {
       socket.isAlive = true;
     });
-
-    socket.on("error", console.error);
   });
 
   // Heartbeat to detect and remove stale connections
