@@ -1,3 +1,6 @@
+import AgentAPI from "apminsight";
+AgentAPI.config();
+
 import express from "express";
 import { db, pool } from "./db/db.js";
 import { matches, commentary } from "./db/schema.js";
